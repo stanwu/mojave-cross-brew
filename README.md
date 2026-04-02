@@ -1,12 +1,12 @@
 # mojave-cross-brew
 
-**Ubuntu 24.04 上交叉編譯 macOS Mojave (10.14) CLI 工具**
+**Cross-compile Homebrew CLI tools for macOS Mojave (10.14 x86_64) on Ubuntu 24.04**
 
-在 Ubuntu 24.04（WSL2 / Codespace / native）上使用 [osxcross](https://github.com/tpoechtrager/osxcross) 交叉編譯工具鏈，將 Homebrew formulae 的原始碼編譯成 macOS Mojave x86_64 可執行的 Mach-O binary。
+Use [osxcross](https://github.com/tpoechtrager/osxcross) on Ubuntu 24.04 (WSL2 / GitHub Codespace / native) to cross-compile Homebrew formulae source code into Mach-O binaries that run on macOS Mojave.
 
-適用場景：老舊 Mac（RAM/磁碟不足以本機編譯）、Homebrew 已不支援 Mojave pre-built bottle。
+Built for old Macs where RAM/disk is too limited to compile locally, and Homebrew no longer provides pre-built bottles for Mojave.
 
-Source code is automatically fetched from [Homebrew formulae](https://github.com/Homebrew/homebrew-core) — no brew installation needed on the build machine.
+Source URLs are automatically parsed from [Homebrew formulae on GitHub](https://github.com/Homebrew/homebrew-core) — no brew installation needed on the build machine.
 
 ## Requirements
 
@@ -30,6 +30,16 @@ make all
 make deploy
 ```
 
+Or use the brew-like interface:
+
+```bash
+./brew.sh install tmux
+./brew.sh install tree
+./brew.sh search editor
+./brew.sh list
+./brew.sh doctor
+```
+
 ## Available Tools
 
 | Tool | Type | Dependencies |
@@ -46,17 +56,18 @@ make deploy
 | jq | pre-built download | — |
 | nvim | pre-built download | — |
 
+Other Homebrew formulae can also be built using the generic autotools/cmake/make recipe.
+
 ## How It Works
 
 ```
-install-env.sh          Setup Ubuntu build env + download osxcross/SDK
-        │
-   build.sh <tool>      Fetch source from brew formula → cross-compile
-        │
-     output/             Mach-O x86_64 binaries ready to deploy
-        │
-install-tmux-macos-     Fix terminfo + install on Mojave
-  mojave.sh
+install-env.sh          Setup Ubuntu 24.04 build env + download osxcross/SDK
+        |
+   brew.sh install      Parse brew formula -> fetch source -> cross-compile
+        |
+     cellar/             Mach-O x86_64 binaries ready to deploy
+        |
+   scp to Mac            Transfer binaries to macOS Mojave target
 ```
 
 ### Toolchain
@@ -67,18 +78,34 @@ install-tmux-macos-     Fix terminfo + install on Mojave
 
 ### Static Linking
 
-Dependencies (libevent, ncurses) are statically linked. Output binaries only depend on macOS system libraries (`libSystem`, `libresolv`), so nothing needs to be installed on the target Mac.
+Dependencies (libevent, ncurses) are statically linked. Output binaries only depend on macOS system libraries (`libSystem`, `libresolv`), so nothing extra needs to be installed on the target Mac.
 
 ## Files
 
 ```
-├── Makefile                       # Make targets
-├── build.sh                       # Main build script
-├── install-env.sh                 # Ubuntu env setup (apt + downloads)
-├── install-tmux-macos-mojave.sh   # Mojave install helper (terminfo fix)
+├── brew.sh                        # Brew-like CLI (install/search/info/list/doctor)
+├── build.sh                       # Low-level build script with per-tool recipes
+├── install-env.sh                 # Ubuntu 24.04 environment setup (apt + downloads)
+├── install-tmux-macos-mojave.sh   # Mojave-side install helper (terminfo fix)
 ├── test-tmux.sh                   # tmux functionality test
-└── output/                        # Built binaries (git-ignored)
+├── Makefile                       # Make targets (setup/build/deploy/clean)
+├── scripts/
+│   └── check-pii.sh              # Pre-commit hook: block personal path leaks
+├── .devcontainer/                 # GitHub Codespace auto-setup
+│   ├── devcontainer.json
+│   └── post-create.sh
+└── .pre-commit-config.yaml        # Security + lint hooks
 ```
+
+## GitHub Codespace
+
+This repo includes a `.devcontainer` configuration. Opening it in GitHub Codespace will automatically:
+
+1. Provision an Ubuntu 24.04 container
+2. Install all build dependencies via `install-env.sh`
+3. Download osxcross toolchain and macOS 10.14 SDK
+
+After setup completes, run `./brew.sh install <tool>` to start building.
 
 ## Known Issues
 
@@ -90,3 +117,7 @@ Dependencies (libevent, ncurses) are statically linked. Output binaries only dep
 ### osxcross SDK
 
 The macOS 10.14 SDK from phracker is missing libc++ headers. `install-env.sh` installs `libc++-XX-dev` and `build.sh` copies the headers into the SDK automatically.
+
+## License
+
+MIT
