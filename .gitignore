@@ -1,0 +1,27 @@
+# Downloaded source tarballs
+*.tar.gz
+*.tar.xz
+
+# Cloned repositories (re-download via install-env.sh)
+osxcross/
+sources/
+
+# Build artifacts (rebuilt from source)
+libevent-*/
+ncurses-*/
+tmux/
+cross-sysroot/
+output/
+cellar/
+
+# Pre-built binaries
+/jq-*
+/nvim-macos*/
+
+# Python venv
+.venv/
+
+# Temp files
+/tmp/
+*.o
+*.a

@@ -1,0 +1,34 @@
+repos:
+  # Security: detect secrets, credentials, private keys
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+
+  # PII/path leak: block personal paths and hostnames
+  - repo: local
+    hooks:
+      - id: no-personal-info
+        name: Check for personal info leaks
+        entry: ./scripts/check-pii.sh
+        language: script
+        pass_filenames: false
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args: ['-e', 'SC2086,SC2046,SC2034,SC2155,SC2012,SC1091,SC2015,SC2059']
+
+  # General file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
