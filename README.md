@@ -1,12 +1,16 @@
-# macOS Mojave Cross-Compiler Toolkit
+# mojave-cross-brew
 
-Cross-compile CLI tools for macOS Mojave (10.14 x86_64) from Ubuntu 24.04 (WSL2).
+**Ubuntu 24.04 上交叉編譯 macOS Mojave (10.14) CLI 工具**
 
-Source code is automatically fetched from [Homebrew formulae](https://github.com/Homebrew/homebrew-core) to ensure macOS-compatible versions.
+在 Ubuntu 24.04（WSL2 / Codespace / native）上使用 [osxcross](https://github.com/tpoechtrager/osxcross) 交叉編譯工具鏈，將 Homebrew formulae 的原始碼編譯成 macOS Mojave x86_64 可執行的 Mach-O binary。
+
+適用場景：老舊 Mac（RAM/磁碟不足以本機編譯）、Homebrew 已不支援 Mojave pre-built bottle。
+
+Source code is automatically fetched from [Homebrew formulae](https://github.com/Homebrew/homebrew-core) — no brew installation needed on the build machine.
 
 ## Requirements
 
-- Ubuntu 24.04 (WSL2 or native)
+- **Ubuntu 24.04** (WSL2, GitHub Codespace, or native)
 - ~3 GB disk, ~2 GB RAM peak
 - Internet connection (for downloading sources)
 
