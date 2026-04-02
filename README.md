@@ -1,6 +1,11 @@
 # mojave-cross-brew
 
+[![Build macOS Mojave Tools](https://github.com/stanwu/mojave-cross-brew/actions/workflows/build.yml/badge.svg)](https://github.com/stanwu/mojave-cross-brew/actions/workflows/build.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/stanwu/mojave-cross-brew)](https://github.com/stanwu/mojave-cross-brew/releases/latest)
+
 **Cross-compile Homebrew CLI tools for macOS Mojave (10.14 x86_64) on Ubuntu 24.04**
+
+> **Download pre-built binaries:** [Latest Release](https://github.com/stanwu/mojave-cross-brew/releases/latest)
 
 Use [osxcross](https://github.com/tpoechtrager/osxcross) on Ubuntu 24.04 (WSL2 / GitHub Codespace / native) to cross-compile Homebrew formulae source code into Mach-O binaries that run on macOS Mojave.
 
