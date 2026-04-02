@@ -92,6 +92,19 @@ jobs:
           HEREDOC
           echo "=== Release contents ==="
           ls -lh release/bin/
+          # Generate version table
+          BREW_RAW="https://raw.githubusercontent.com/Homebrew/homebrew-core/master/Formula"
+          TABLE="| Tool | Type | Version |\n|------|------|---------|"
+          for tool in tmux tree htop bash nano vim screen rsync socat; do
+            ver=$(curl -sfL "${BREW_RAW}/${tool:0:1}/${tool}.rb" | grep -m1 'url "' | grep -oP '[\d]+\.[\d]+[\.\d]*[a-z]?' | head -1)
+            TABLE="${TABLE}\n| ${tool} | cross-compiled | ${ver:-unknown} |"
+          done
+          TABLE="${TABLE}\n| jq | pre-built | 1.6 |"
+          TABLE="${TABLE}\n| nvim | pre-built | 0.9.0 |"
+          echo -e "$TABLE" > /tmp/version-table.md
+          echo "VERSION_TABLE<<EOF" >> "$GITHUB_ENV"
+          cat /tmp/version-table.md >> "$GITHUB_ENV"
+          echo "EOF" >> "$GITHUB_ENV"
           VERSION=${GITHUB_REF_NAME:-dev}
           tar czf "mojave-tools-${VERSION}.tar.gz" -C release .
           echo "RELEASE_FILE=mojave-tools-${VERSION}.tar.gz" >> "$GITHUB_ENV"
@@ -114,19 +127,7 @@ jobs:
             Cross-compiled on Ubuntu 24.04 via osxcross.
 
             ### Included tools
-            | Tool | Type |
-            |------|------|
-            | tmux | cross-compiled |
-            | tree | cross-compiled |
-            | htop | cross-compiled |
-            | bash | cross-compiled |
-            | nano | cross-compiled |
-            | vim  | cross-compiled |
-            | screen | cross-compiled |
-            | rsync | cross-compiled |
-            | socat | cross-compiled |
-            | jq   | pre-built (v1.6) |
-            | nvim | pre-built (v0.9.0) |
+            ${{ env.VERSION_TABLE }}
 
             ### Install
             ```bash
