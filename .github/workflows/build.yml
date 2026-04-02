@@ -96,7 +96,9 @@ jobs:
           BREW_RAW="https://raw.githubusercontent.com/Homebrew/homebrew-core/master/Formula"
           TABLE="| Tool | Type | Version |\n|------|------|---------|"
           for tool in tmux tree htop bash nano vim screen rsync socat; do
-            ver=$(curl -sfL "${BREW_RAW}/${tool:0:1}/${tool}.rb" | grep -m1 'url "' | grep -oP '[\d]+\.[\d]+[\.\d]*[a-z]?' | head -1)
+            url=$(curl -sfL "${BREW_RAW}/${tool:0:1}/${tool}.rb" | grep -m1 'url "' | sed 's/.*url "//;s/".*//')
+            filename=$(basename "$url" | sed 's/\.tar.*//;s/\.zip$//')
+            ver=$(echo "$filename" | grep -oP '[\d]+\.[\d]+[\.\d]*[a-z]?' | tail -1)
             TABLE="${TABLE}\n| ${tool} | cross-compiled | ${ver:-unknown} |"
           done
           TABLE="${TABLE}\n| jq | pre-built | 1.6 |"

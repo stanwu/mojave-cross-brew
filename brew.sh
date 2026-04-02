@@ -63,11 +63,13 @@ _formula_url() {
 
 # Extract version from formula
 _formula_version() {
-    local rb ver
+    local rb ver url filename
     rb=$(_formula_rb "$1")
     ver=$(echo "$rb" | grep -m1 'version "' | sed 's/.*version "//;s/".*//')
     if [ -z "$ver" ]; then
-        ver=$(echo "$rb" | grep -m1 'url "' | grep -oP '[\d]+\.[\d]+[\.\d]*[a-z]?' | head -1)
+        url=$(echo "$rb" | grep -m1 'url "' | sed 's/.*url "//;s/".*//')
+        filename=$(basename "$url" | sed 's/\.tar.*//;s/\.zip$//')
+        ver=$(echo "$filename" | grep -oP '[\d]+\.[\d]+[\.\d]*[a-z]?' | tail -1)
     fi
     echo "${ver:-unknown}"
 }
