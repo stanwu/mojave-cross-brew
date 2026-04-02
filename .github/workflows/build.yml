@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 jobs:
   build:
@@ -14,10 +13,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache osxcross toolchain
+        id: cache-osxcross
+        uses: actions/cache@v4
+        with:
+          path: osxcross/target
+          key: osxcross-mojave-10.14-${{ runner.os }}
+
       - name: Install build dependencies
         run: ./install-env.sh
 
       - name: Build osxcross toolchain
+        if: steps.cache-osxcross.outputs.cache-hit != 'true'
         run: |
           cd osxcross
           UNATTENDED=1 TARGET_DIR=$PWD/target ./build.sh || true
@@ -28,10 +35,13 @@ jobs:
             mkdir -p "$SDK_INCLUDE/c++/v1"
             cp -a "/usr/lib/llvm-${CLANG_VER}/include/c++/v1/"* "$SDK_INCLUDE/c++/v1/"
           fi
-          # Verify
-          export PATH="$PWD/target/bin:$PATH"
+
+      - name: Verify cross-compiler
+        run: |
+          export PATH="$PWD/osxcross/target/bin:$PATH"
           echo 'int main(){return 0;}' | x86_64-apple-darwin18-clang -x c - -o /tmp/test
           file /tmp/test | grep -q Mach-O
+          echo "osxcross OK"
 
       - name: Build tools
         run: |
@@ -49,21 +59,17 @@ jobs:
       - name: Package release tarball
         run: |
           mkdir -p release/bin
-          # Copy all binaries
           for pkg in cellar/*/; do
             name=$(basename "$pkg")
             bin=$(find "$pkg" -type f -perm -111 2>/dev/null | head -1)
             [ -n "$bin" ] && cp "$bin" "release/bin/$name"
           done
-          # Copy nvim directory
           if [ -d cellar/nvim ]; then
             cp -a cellar/nvim/*/bin release/nvim-bin 2>/dev/null || true
             cp -a cellar/nvim/*/share release/nvim-share 2>/dev/null || true
           fi
-          # Copy install helper
           cp install-tmux-macos-mojave.sh release/
           cp test-tmux.sh release/
-          # Add README
           cat > release/README.txt << 'HEREDOC'
           mojave-cross-brew pre-built binaries
           =====================================
@@ -81,10 +87,8 @@ jobs:
           If Gatekeeper blocks a binary:
             xattr -cr /usr/local/bin/<tool>
           HEREDOC
-          # List contents
           echo "=== Release contents ==="
           ls -lh release/bin/
-          # Create tarball
           VERSION=${GITHUB_REF_NAME:-dev}
           tar czf "mojave-tools-${VERSION}.tar.gz" -C release .
           echo "RELEASE_FILE=mojave-tools-${VERSION}.tar.gz" >> "$GITHUB_ENV"
