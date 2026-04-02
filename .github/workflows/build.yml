@@ -1,0 +1,130 @@
+name: Build macOS Mojave Tools
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: ./install-env.sh
+
+      - name: Build osxcross toolchain
+        run: |
+          cd osxcross
+          UNATTENDED=1 TARGET_DIR=$PWD/target ./build.sh || true
+          # Fix libc++ headers
+          CLANG_VER=$(clang --version | grep -oP '\d+' | head -1)
+          SDK_INCLUDE="$PWD/target/SDK/MacOSX10.14.sdk/usr/include"
+          if [ ! -d "$SDK_INCLUDE/c++/v1" ]; then
+            mkdir -p "$SDK_INCLUDE/c++/v1"
+            cp -a "/usr/lib/llvm-${CLANG_VER}/include/c++/v1/"* "$SDK_INCLUDE/c++/v1/"
+          fi
+          # Verify
+          export PATH="$PWD/target/bin:$PATH"
+          echo 'int main(){return 0;}' | x86_64-apple-darwin18-clang -x c - -o /tmp/test
+          file /tmp/test | grep -q Mach-O
+
+      - name: Build tools
+        run: |
+          for tool in tmux tree htop bash nano vim screen rsync socat; do
+            echo "::group::Building $tool"
+            ./brew.sh install "$tool" || echo "WARNING: $tool build failed"
+            echo "::endgroup::"
+          done
+
+      - name: Download pre-built tools
+        run: |
+          ./brew.sh install jq
+          ./brew.sh install nvim
+
+      - name: Package release tarball
+        run: |
+          mkdir -p release/bin
+          # Copy all binaries
+          for pkg in cellar/*/; do
+            name=$(basename "$pkg")
+            bin=$(find "$pkg" -type f -perm -111 2>/dev/null | head -1)
+            [ -n "$bin" ] && cp "$bin" "release/bin/$name"
+          done
+          # Copy nvim directory
+          if [ -d cellar/nvim ]; then
+            cp -a cellar/nvim/*/bin release/nvim-bin 2>/dev/null || true
+            cp -a cellar/nvim/*/share release/nvim-share 2>/dev/null || true
+          fi
+          # Copy install helper
+          cp install-tmux-macos-mojave.sh release/
+          cp test-tmux.sh release/
+          # Add README
+          cat > release/README.txt << 'HEREDOC'
+          mojave-cross-brew pre-built binaries
+          =====================================
+          Target: macOS Mojave 10.14 (x86_64)
+          Built on: Ubuntu 24.04 via osxcross
+
+          Usage:
+            scp bin/<tool> your-mac:/usr/local/bin/
+            # or copy all:
+            scp bin/* your-mac:/usr/local/bin/
+
+          For tmux, also run install-tmux-macos-mojave.sh on the Mac
+          to fix terminfo symlinks.
+
+          If Gatekeeper blocks a binary:
+            xattr -cr /usr/local/bin/<tool>
+          HEREDOC
+          # List contents
+          echo "=== Release contents ==="
+          ls -lh release/bin/
+          # Create tarball
+          VERSION=${GITHUB_REF_NAME:-dev}
+          tar czf "mojave-tools-${VERSION}.tar.gz" -C release .
+          echo "RELEASE_FILE=mojave-tools-${VERSION}.tar.gz" >> "$GITHUB_ENV"
+          echo "RELEASE_VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mojave-tools
+          path: ${{ env.RELEASE_FILE }}
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.RELEASE_FILE }}
+          body: |
+            ## Pre-built CLI tools for macOS Mojave (10.14 x86_64)
+
+            Cross-compiled on Ubuntu 24.04 via osxcross.
+
+            ### Included tools
+            | Tool | Type |
+            |------|------|
+            | tmux | cross-compiled |
+            | tree | cross-compiled |
+            | htop | cross-compiled |
+            | bash | cross-compiled |
+            | nano | cross-compiled |
+            | vim  | cross-compiled |
+            | screen | cross-compiled |
+            | rsync | cross-compiled |
+            | socat | cross-compiled |
+            | jq   | pre-built (v1.6) |
+            | nvim | pre-built (v0.9.0) |
+
+            ### Install
+            ```bash
+            tar xzf mojave-tools-${{ env.RELEASE_VERSION }}.tar.gz
+            scp bin/* your-mac:/usr/local/bin/
+            ```
+
+            For tmux, run `install-tmux-macos-mojave.sh` on the Mac to fix terminfo.
